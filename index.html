@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wyszukiwarka Prelegentów</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background:#0a0a0a;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(120,50,255,.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0,200,255,.2) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(255,0,150,.2) 0%, transparent 50%);
+      min-height:100vh;padding:20px;color:#fff;position:relative;overflow-x:hidden
+    }
+    body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.01) 2px,rgba(255,255,255,.01) 4px);pointer-events:none;z-index:1}
+    .container{max-width:1400px;margin:0 auto;position:relative;z-index:2}
+    header{text-align:center;margin-bottom:50px;position:relative}
+    h1{
+      font-size:3.5rem;font-weight:700;margin-bottom:15px;
+      background:linear-gradient(45deg,#00ffff,#ff00ff,#00ffff);background-size:200% 200%;
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      animation:gradient 3s ease infinite;text-transform:uppercase;letter-spacing:3px;
+      text-shadow:0 0 40px rgba(0,255,255,.5)
+    }
+    @keyframes gradient{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    header p{color:#888;font-size:1.1rem;letter-spacing:1px}
+
+    .search-section{
+      background:rgba(20,20,30,.6);backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:35px;
+      box-shadow:0 20px 40px rgba(0,0,0,.5), inset 0 0 20px rgba(255,255,255,.05), 0 0 60px rgba(0,255,255,.1);
+      margin-bottom:40px;position:relative;overflow:hidden
+    }
+    .search-section::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,255,255,.1),transparent);animation:scan 4s linear infinite}
+    @keyframes scan{0%{left:-100%}100%{left:100%}}
+    .search-container{display:flex;gap:15px;margin-bottom:25px;flex-wrap:wrap}
+    .search-input{
+      flex:1;min-width:250px;padding:18px 25px;background:rgba(10,10,20,.8);
+      border:2px solid rgba(0,255,255,.3);border-radius:15px;font-size:16px;color:#fff;transition:all .3s ease;letter-spacing:.5px
+    }
+    .search-input::placeholder{color:rgba(136,136,136,.8)}
+    .search-input:focus{outline:none;border-color:#00ffff;box-shadow:0 0 20px rgba(0,255,255,.4), inset 0 0 10px rgba(0,255,255,.1);background:rgba(10,10,30,.9)}
+    .search-button{
+      padding:18px 50px;background:linear-gradient(45deg,#00ffff,#ff00ff);color:#000;border:none;border-radius:15px;
+      font-size:16px;font-weight:bold;cursor:pointer;transition:all .3s ease;text-transform:uppercase;letter-spacing:2px;position:relative;overflow:hidden
+    }
+    .search-button::before{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.5);border-radius:50%;transform:translate(-50%,-50%);transition:width .6s,height .6s}
+    .search-button:hover::before{width:300px;height:300px}
+    .search-button:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,255,255,.4),0 0 40px rgba(255,0,255,.3)}
+
+    .filters{display:flex;gap:12px;flex-wrap:wrap}
+    .filter-tag{
+      padding:10px 20px;background:rgba(30,30,40,.6);border:1px solid rgba(0,255,255,.3);border-radius:25px;
+      font-size:14px;cursor:pointer;transition:all .3s ease;text-transform:uppercase;letter-spacing:1px;position:relative;overflow:hidden;white-space:nowrap
+    }
+    .filter-tag::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(0,255,255,.3),transparent);transition:left .5s}
+    .filter-tag:hover::before{left:100%}
+    .filter-tag:hover{border-color:#00ffff;color:#00ffff;transform:scale(1.05);box-shadow:0 0 15px rgba(0,255,255,.4)}
+    .filter-tag.active{background:linear-gradient(45deg,rgba(0,255,255,.3),rgba(255,0,255,.3));border-color:#00ffff;color:#00ffff;box-shadow:0 0 20px rgba(0,255,255,.5)}
+
+    .results-section{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:30px}
+    .speaker-card{
+      background:rgba(20,20,30,.6);backdrop-filter:blur(10px);border:1px solid rgba(0,255,255,.2);border-radius:20px;padding:30px;
+      transition:all .3s ease;cursor:pointer;position:relative;overflow:hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .speaker-card::before{content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;background:linear-gradient(45deg,#00ffff,#ff00ff,#00ffff);border-radius:20px;opacity:0;z-index:-1;transition:opacity .3s}
+    .speaker-card:hover::before{opacity:1}
+    .speaker-card:hover{transform:translateY(-10px) scale(1.02);box-shadow:0 20px 40px rgba(0,255,255,.3),0 0 60px rgba(0,255,255,.2);border-color:transparent}
+    
+    .speaker-header{display:flex;align-items:center;margin-bottom:25px;order:1}
+    .speaker-avatar{width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#00ffff,#ff00ff);display:flex;align-items:center;justify-content:center;color:#000;font-size:24px;font-weight:bold;margin-right:20px;animation:pulse 2s infinite;flex-shrink:0}
+    @keyframes pulse{0%,100%{box-shadow:0 0 20px rgba(0,255,255,.5)}50%{box-shadow:0 0 30px rgba(255,0,255,.7)}}
+    .speaker-info{flex:1;min-width:0}
+    .speaker-info h3{color:#fff;font-size:1.4rem;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;word-wrap:break-word}
+    .company-name{color:#00ffff;font-size:1rem;letter-spacing:.5px;opacity:.9}
+    
+    .info-section{margin-bottom:20px}
+    .info-section-title{
+      color:#ff00ff;
+      font-size:0.9rem;
+      font-weight:600;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      margin-bottom:8px;
+      display:block;
+    }
+    .info-section-content{
+      color:rgba(230,230,230,.95);
+      line-height:1.6;
+      font-size:0.95rem;
+    }
+
+    /* Modal/szczegóły prelegenta */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .modal-overlay.show {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: rgba(20,20,30,.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(0,255,255,.3);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 40px rgba(0,0,0,.7), 0 0 60px rgba(0,255,255,.2);
+    }
+    
+    .modal-content::-webkit-scrollbar {
+      width: 12px;
+    }
+    
+    .modal-content::-webkit-scrollbar-track {
+      background: rgba(10,10,20,.5);
+      border-radius: 10px;
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb {
+      background: linear-gradient(45deg, #00ffff, #ff00ff);
+      border-radius: 10px;
+      border: 2px solid rgba(20,20,30,.95);
+    }
+    
+    .modal-content::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(45deg, #ff00ff, #00ffff);
+      box-shadow: 0 0 10px rgba(0,255,255,.5);
+    }
+    
+    .modal-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      border: none;
+      color: #ff00ff;
+      font-size: 24px;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    
+    .modal-close:hover {
+      background: rgba(255,0,255,.2);
+      transform: scale(1.1);
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(0,255,255,.3);
+    }
+    
+    .modal-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: linear-gradient(135deg,#00ffff,#ff00ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #000;
+      font-size: 36px;
+      font-weight: bold;
+      margin-right: 25px;
+      animation: pulse 2s infinite;
+      flex-shrink: 0;
+    }
+    
+    .modal-speaker-info h2 {
+      color: #fff;
+      font-size: 2rem;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .modal-company {
+      color: #00ffff;
+      font-size: 1.3rem;
+      letter-spacing: .5px;
+      opacity: .9;
+    }
+    
+    .modal-section {
+      margin-bottom: 25px;
+    }
+    
+    .modal-section-title {
+      color: #ff00ff;
+      font-size: 1rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .modal-section-content {
+      color: rgba(230,230,230,.95);
+      line-height: 1.7;
+      font-size: 1rem;
+      background: rgba(10,10,20,.5);
+      padding: 15px;
+      border-radius: 10px;
+      border-left: 3px solid rgba(0,255,255,.5);
+    }
+
+    .no-results{text-align:center;padding:80px 20px;background:rgba(20,20,30,.6);backdrop-filter:blur(10px);border:1px solid rgba(0,255,255,.2);border-radius:20px;grid-column:1 / -1}
+    .no-results h3{color:#00ffff;margin-bottom:10px;font-size:1.5rem;text-transform:uppercase;letter-spacing:2px}
+    .no-results p{color:rgba(200,200,200,.7)}
+    .loading{text-align:center;padding:60px;color:#00ffff;font-size:1.3rem;text-transform:uppercase;letter-spacing:2px;grid-column:1 / -1}
+    .loading::after{content:"...";animation:dots 1.5s infinite}
+    @keyframes dots{0%,20%{content:"."}40%{content:".."}60%,100%{content:"..."}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 Wyszukiwarka Prelegentów</h1>
+    </header>
+
+    <div class="search-section">
+      <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Wpisz imię, nazwisko lub nazwę firmy...">
+        <button class="search-button" onclick="searchSpeakers()">Szukaj</button>
+      </div>
+      <div class="filters" id="companyFilters"></div>
+    </div>
+
+    <div class="results-section" id="resultsSection"></div>
+    
+    <!-- Modal szczegółów prelegenta -->
+    <div class="modal-overlay" id="speakerModal">
+      <div class="modal-content">
+        <button class="modal-close" onclick="closeSpeakerModal()">&times;</button>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- KONFIGURACJA API - AUTOMATYCZNA DETEKCJA ---
+    const API_BASE_URL = window.location.origin + '/api';
+    console.log('🔗 API Base URL:', API_BASE_URL);
+
+    // --- STAN ---
+    let activeCompanyFilters = [];
+    let lastRendered = [];
+    let searchResults = [];
+
+    // --- API / wyszukiwarka ---
+    async function searchSpeakers() {
+      const searchValue = document.getElementById('searchInput').value;
+      const resultsSection = document.getElementById('resultsSection');
+      resultsSection.innerHTML = '<div class="loading">Skanowanie bazy danych</div>';
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/speakers/search`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: searchValue, filters: [] })
+        });
+        const result = await res.json();
+        
+        if (result.success) {
+          searchResults = result.data.slice();
+          activeCompanyFilters = [];
+          displayResults(result.data);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (e) {
+        console.warn('API niedostępne:', e);
+        resultsSection.innerHTML = `
+          <div class="no-results">
+            <h3>Błąd połączenia</h3>
+            <p>Sprawdź czy backend działa</p>
+            <p><small>API URL: ${API_BASE_URL}</small></p>
+          </div>`;
+      }
+    }
+
+    // --- HELPERY ---
+    function getInitials(name) {
+      if (!name) return '?';
+      const cleaned = String(name).trim();
+      const parts = cleaned.split(/\s+/).filter(Boolean);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return parts[0] ? parts[0][0].toUpperCase() : '?';
+    }
+
+    function cleanText(text) {
+      if (!text) return '';
+      return String(text).trim().replace(/\s+/g, ' ');
+    }
+
+    // --- FILTRY FIRM ---
+    function updateCompanyFilters(speakers) {
+      const holder = document.getElementById('companyFilters');
+      const companies = [...new Set(
+        speakers
+          .map(s => cleanText(s.company))
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b, 'pl'));
+
+      holder.innerHTML = companies.map(name => `
+        <div class="filter-tag ${activeCompanyFilters.includes(name) ? 'active' : ''}"
+             onclick="toggleCompanyFilter('${name.replace(/'/g, "\\'")}')">
+          ${name}
+        </div>
+      `).join('');
+    }
+
+    function toggleCompanyFilter(name) {
+      const i = activeCompanyFilters.indexOf(name);
+      if (i >= 0) {
+        activeCompanyFilters.splice(i, 1);
+      } else {
+        activeCompanyFilters.push(name);
+      }
+      
+      const dataToFilter = searchResults.length > 0 ? searchResults : lastRendered;
+      updateCompanyFilters(dataToFilter);
+      
+      if (activeCompanyFilters.length === 0) {
+        displayResults(dataToFilter, true);
+      } else {
+        const filtered = dataToFilter.filter(s => {
+          const company = cleanText(s.company);
+          return activeCompanyFilters.includes(company);
+        });
+        displayResults(filtered, true);
+      }
+    }
+
+    // --- RENDER KART ---
+    function displayResults(speakers, skipFiltersRebuild = false) {
+      lastRendered = speakers.slice();
+      const resultsSection = document.getElementById('resultsSection');
+
+      if (!speakers || speakers.length === 0) {
+        resultsSection.innerHTML = `
+          <div class="no-results">
+            <h3>Brak wyników</h3>
+            <p>Spróbuj zmienić kryteria wyszukiwania</p>
+          </div>`;
+        if (!skipFiltersRebuild) updateCompanyFilters([]);
+        return;
+      }
+
+      if (!skipFiltersRebuild) {
+        const sourceData = searchResults.length > 0 ? searchResults : speakers;
+        updateCompanyFilters(sourceData);
+      }
+
+      resultsSection.innerHTML = speakers.map((speaker, index) => {
+        if (index === 0) {
+          console.log('Dane pierwszego prelegenta:', speaker);
+        }
+
+        const id = speaker.id || 0;
+        const name = cleanText(speaker.name) || 'Nieznany prelegent';
+        const company = cleanText(speaker.company) || 'Niezależny ekspert';
+
+        return `
+          <div class="speaker-card" onclick="showSpeakerDetails(${id})">
+            <div class="speaker-header">
+              <div class="speaker-avatar">${getInitials(name)}</div>
+              <div class="speaker-info">
+                <h3>${name}</h3>
+                <div class="company-name">${company}</div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+
+      document.querySelectorAll('.speaker-card').forEach((card, i) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'all .5s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, Math.min(i * 50, 500));
+      });
+    }
+
+    // --- Szczegóły ---
+    function showSpeakerDetails(id) {
+      console.log('Szczegóły prelegenta ID:', id);
+      
+      const speaker = lastRendered.find(s => s.id === id);
+      if (!speaker) {
+        console.error('Nie znaleziono prelegenta o ID:', id);
+        return;
+      }
+      
+      const name = cleanText(speaker.name) || 'Nieznany prelegent';
+      const company = cleanText(speaker.company) || 'Niezależny ekspert';
+      const topic = cleanText(speaker.topic) || '';
+      const challenges = cleanText(speaker.challenges) || '';
+      const zaczepka = cleanText(speaker.zaczepka) || '';
+      
+      let opportunitiesText = '';
+      if (speaker.opportunities) {
+        if (Array.isArray(speaker.opportunities)) {
+          opportunitiesText = speaker.opportunities.map(o => cleanText(o)).filter(Boolean).join(', ');
+        } else {
+          opportunitiesText = cleanText(speaker.opportunities);
+        }
+      }
+      
+      const modalContent = document.getElementById('modalContent');
+      modalContent.innerHTML = `
+        <div class="modal-header">
+          <div class="modal-avatar">${getInitials(name)}</div>
+          <div class="modal-speaker-info">
+            <h2>${name}</h2>
+            <div class="modal-company">${company}</div>
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <span class="modal-section-title">Temat prezentacji:</span>
+          <div class="modal-section-content">
+            ${topic || '<em>Brak danych</em>'}
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <span class="modal-section-title">Problemy i wyzwania:</span>
+          <div class="modal-section-content">
+            ${challenges || '<em>Brak danych</em>'}
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <span class="modal-section-title">Możliwości dla IT i sprzedaży:</span>
+          <div class="modal-section-content">
+            ${opportunitiesText || '<em>Brak danych</em>'}
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <span class="modal-section-title">Zaczepka:</span>
+          <div class="modal-section-content">
+            ${zaczepka || '<em>Brak danych</em>'}
+          </div>
+        </div>
+      `;
+      
+      const modal = document.getElementById('speakerModal');
+      modal.classList.add('show');
+      
+      modal.onclick = function(e) {
+        if (e.target === modal) {
+          closeSpeakerModal();
+        }
+      };
+    }
+    
+    function closeSpeakerModal() {
+      const modal = document.getElementById('speakerModal');
+      modal.classList.remove('show');
+      modal.onclick = null;
+    }
+    
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeSpeakerModal();
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('keypress', e => {
+      if (e.key === 'Enter') searchSpeakers();
+    });
+
+    // --- Start: pobierz wszystkich ---
+    async function loadAllSpeakers() {
+      const resultsSection = document.getElementById('resultsSection');
+      resultsSection.innerHTML = '<div class="loading">Ładowanie prelegentów</div>';
+      
+      try {
+        const res = await fetch(`${API_BASE_URL}/speakers/all`);
+        const result = await res.json();
+        
+        if (result.success) {
+          console.log(`✅ Załadowano ${result.count} prelegentów`);
+          console.log('Struktura danych:', result.data[0]);
+          searchResults = result.data.slice();
+          displayResults(result.data);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (e) {
+        console.error('Błąd ładowania:', e);
+        resultsSection.innerHTML = `
+          <div class="no-results">
+            <h3>Błąd połączenia z bazą danych</h3>
+            <p>Upewnij się, że backend działa</p>
+            <p><small>API URL: ${API_BASE_URL}</small></p>
+          </div>`;
+      }
+    }
+
+    window.addEventListener('load', loadAllSpeakers);
+  </script>
+</body>
+</html>
